@@ -8,7 +8,7 @@
 
 /* Manifest constants */
 #define MAX_BUFFER_SIZE 40
-#define PORT 50
+#define PORT 44
 
 /* Verbose debugging */
 #define DEBUG 1

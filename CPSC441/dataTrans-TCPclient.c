@@ -28,14 +28,25 @@ void perror(const char *s);
 #define ALLDONE 0
 #define ENTER 1
 
-/* Prompt the user to enter a word */
-void printmenu()
-{
+void printStartMenu(){
         printf("\n");
         printf("Please choose from the following selections:\n");
         printf("  1 - Enter a sentence\n");
         printf("  0 - Exit program\n");
-        printf("Your desired menu selection? ");
+}
+
+void printmenu()
+{
+        printf("\n");
+        printf("Please choose from the following selections:\n");
+        printf("  1 - Identity\n");
+        printf("  2 - Reverse\n");
+        printf("  3 - Upper\n");
+        printf("  4 - Lower\n");
+        printf("  5 - Caesar\n");
+        printf("  6 - Vigenere\n");
+        printf("  0 - Exit program\n");
+        printf("Your desired menu selection? eg. 2314: ");
 }
 
 /* Main program of client */
@@ -48,6 +59,7 @@ int main()
         char hostname[MAX_HOSTNAME_LENGTH];
         char message[MAX_WORD_LENGTH];
         char messageback[MAX_WORD_LENGTH];
+        char temp[MAX_WORD_LENGTH];
         int choice, len, bytes;
 
         /* Initialization of server sockaddr data structure */
@@ -57,8 +69,6 @@ int main()
         server.sin_addr.s_addr = htonl(INADDR_ANY);
 
 #ifdef BYNAME
-        /* use a resolver to get the IP address for a domain name */
-        /* I did my testing using csx1 (136.159.5.25)    Carey */
         strcpy(hostname, "192.168.1.71");
         hp = gethostbyname(hostname);
         if (hp == NULL)
@@ -76,44 +86,61 @@ int main()
         /* create the client socket for its transport-level end point */
         if( (sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1 )
         {
-                fprintf(stderr, "wordlengthclient: socket() call failed!\n");
+                fprintf(stderr, "dataTransClient: socket() call failed!\n");
                 exit(1);
         }
 
         /* connect the socket to the server's address using TCP */
         if( connect(sockfd, (struct sockaddr *)&server, sizeof(struct sockaddr_in)) == -1 )
         {
-                fprintf(stderr, "wordlengthclient: connect() call failed!\n");
+                fprintf(stderr, "dataTransClient: connect() call failed!\n");
                 perror(NULL);
                 exit(1);
         }
 
         /* Print welcome banner */
         printf("This is the TCP data transformation program.\n");
-        printmenu();
+        printStartMenu();
         scanf("%d", &choice);
 
-        /* main loop: read a word, send to server, and print answer received */
-        while( choice != ALLDONE )
-        {
-                if( choice == ENTER )
+        if( choice != ALLDONE ) {
+
+                /* get rid of newline after the (integer) menu choice given */
+                c = getchar();
+
+                /* prompt user for the input */
+                printf("Enter your sentence: ");
+                len = 0;
+                while( (c = getchar()) != '\n' )
                 {
-                        /* get rid of newline after the (integer) menu choice given */
-                        c = getchar();
+                        message[len] = c;
+                        len++;
+                }
+                /* make sure the message is null-terminated in C */
+                message[len] = '\0';
 
-                        /* prompt user for the input */
-                        printf("Enter your sentence: ");
-                        len = 0;
-                        while( (c = getchar()) != '\n' )
-                        {
-                                message[len] = c;
-                                len++;
-                        }
-                        /* make sure the message is null-terminated in C */
-                        message[len] = '\0';
+                bzero(temp, MAX_WORD_LENGTH);
+                strcpy(temp, message);
+                strcpy(message, "$WORD:");
+                strcat(message, temp);
 
-                        /* send it to the server via the socket */
-                        send(sockfd, message, len, 0);
+                /* send it to the server via the socket */
+                send(sockfd, message, strlen(message), 0);
+
+                printmenu();
+                scanf("%d", &choice);
+
+                /* main loop: read a word, send to server, and print answer received */
+                while( choice != ALLDONE )
+                {
+                        bzero(message, MAX_WORD_LENGTH);
+                        sprintf(message, "%d", choice);
+                        bzero(temp, MAX_WORD_LENGTH);
+                        strcpy(temp, message);
+                        strcpy(message, "$OPTN:");
+                        strcat(message, temp);
+
+                        send(sockfd, message, strlen(message), 0);
 
                         /* see what the server sends back */
                         if( (bytes = recv(sockfd, messageback, len, 0)) > 0 )
@@ -130,11 +157,9 @@ int main()
                                 close(sockfd);
                                 exit(1);
                         }
+                        printmenu();
+                        scanf("%d", &choice);
                 }
-                else printf("Invalid menu selection. Please try again.\n");
-
-                printmenu();
-                scanf("%d", &choice);
         }
 
         /* Program all done, so clean up and exit the client */
